@@ -177,6 +177,14 @@ main {
 .videoControls .icon {
   font-size: 42px;
 }
+.videoError {
+  margin: 16px auto 0;
+  max-width: 480px;
+  text-align: center;
+  color: #ff8080;
+  font-size: 14px;
+  line-height: 1.4;
+}
 .modeSelector {
   display: flex;
   gap: 16px;

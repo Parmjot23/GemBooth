@@ -33,22 +33,63 @@ export default function App() {
   const [hoveredMode, setHoveredMode] = useState(null)
   const [tooltipPosition, setTooltipPosition] = useState({top: 0, left: 0})
   const [showCustomPrompt, setShowCustomPrompt] = useState(false)
+  const [videoError, setVideoError] = useState(null)
   const videoRef = useRef(null)
 
   const startVideo = async () => {
     setDidInitVideo(true)
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: {width: {ideal: 1920}, height: {ideal: 1080}},
-      audio: false,
-      facingMode: {ideal: 'user'}
-    })
-    setVideoActive(true)
-    videoRef.current.srcObject = stream
+    setVideoError(null)
 
-    const {width, height} = stream.getVideoTracks()[0].getSettings()
-    const squareSize = Math.min(width, height)
-    canvas.width = squareSize
-    canvas.height = squareSize
+    const applyStream = stream => {
+      setVideoActive(true)
+      videoRef.current.srcObject = stream
+
+      const {width, height} = stream.getVideoTracks()[0].getSettings()
+      const squareSize = Math.min(width, height)
+      canvas.width = squareSize
+      canvas.height = squareSize
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: {ideal: 1920},
+          height: {ideal: 1080},
+          facingMode: {ideal: 'user'}
+        },
+        audio: false
+      })
+      applyStream(stream)
+    } catch (error) {
+      console.error('Unable to start video with preferred constraints', error)
+
+      if (error.name === 'NotAllowedError') {
+        setVideoError('Camera access was blocked. Please allow permissions and try again.')
+        setVideoActive(false)
+        return
+      }
+
+      if (error.name === 'NotFoundError' || error.name === 'OverconstrainedError') {
+        try {
+          const fallbackStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false
+          })
+          applyStream(fallbackStream)
+          return
+        } catch (fallbackError) {
+          console.error('Unable to start video with fallback constraints', fallbackError)
+          setVideoError(
+            'We could not find an available camera. Please check your device and permissions.'
+          )
+          setVideoActive(false)
+          return
+        }
+      }
+
+      setVideoError('We ran into a problem starting your camera. Please refresh and try again.')
+      setVideoActive(false)
+    }
   }
 
   const takePhoto = () => {
@@ -152,6 +193,11 @@ export default function App() {
             <h1>📸 GemBooth</h1>
             <p>{didInitVideo ? 'One sec…' : 'Tap anywhere to start webcam'}</p>
           </button>
+        )}
+        {videoError && (
+          <p className="videoError" role="alert">
+            {videoError}
+          </p>
         )}
 
         {videoActive && (
